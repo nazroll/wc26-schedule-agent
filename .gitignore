@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 .venv/
 .env
+.agent_state.json
+.claude/
