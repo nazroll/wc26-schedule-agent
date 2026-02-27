@@ -4,3 +4,4 @@ __pycache__/
 .env
 .agent_state.json
 .claude/
+schedule.json
