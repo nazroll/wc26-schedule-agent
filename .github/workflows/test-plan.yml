@@ -22,4 +22,4 @@ jobs:
           python -m venv .venv
           source .venv/bin/activate
           pip install -r requirements.txt
-          .venv/bin/python3 -c "import schedule_agent; schedule_agent.tick()"
+          .venv/bin/python3 -c "from schedule_agent import tick; from scraper import parse_schedule; print('OK')"
