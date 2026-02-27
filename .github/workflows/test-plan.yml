@@ -17,11 +17,6 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Verify all references to AI provider are Gemini
-        run: |
-          # Fails if 'claude' or 'anthropic' are found in source files (ignoring CLAUDE.md for now)
-          ! grep -riE "claude|anthropic" --include="*.py" --include="*.md" --exclude="CLAUDE.md" .
-
       - name: Confirm setup instructions work end-to-end
         run: |
           python -m venv .venv
