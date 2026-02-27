@@ -6,13 +6,13 @@ Winterclash 2026 Schedule Agent
 - Writes parsed data to schedule.json when the schedule changes
 - Computes a structural fingerprint of the page on every fetch
 - When the fingerprint changes OR parsing returns empty/errors, the agent
-  calls Claude to inspect the new HTML and rewrite scraper.py automatically
+  calls Gemini to inspect the new HTML and rewrite scraper.py automatically
 - After rewriting, it validates the new scraper before saving it
 
 Requirements:
-    pip install requests beautifulsoup4 anthropic
+    pip install requests beautifulsoup4 google-genai
 
-Set ANTHROPIC_API_KEY in your environment for the self-healing feature.
+Set GEMINI_API_KEY in your environment for the self-healing feature.
 """
 
 import hashlib
@@ -101,13 +101,13 @@ def load_scraper():
     return module
 
 
-# ── Self-healing via Claude ───────────────────────────────────────────────────
+# ── Self-healing via Gemini ───────────────────────────────────────────────────
 
 
 def _extract_schedule_html(html: str, max_chars: int = 15_000) -> str:
     """
     Return the most schedule-relevant section of the HTML to keep
-    the Claude prompt compact.
+    the Gemini prompt compact.
     """
     soup = BeautifulSoup(html, "html.parser")
     weekday_re = re.compile(
