@@ -1,21 +1,21 @@
 # Winterclash 2026 Schedule Agent
 
-A Python agent that polls the [Winterclash 2026 schedule page](https://www.winterclash.com/schedule-2026/) every 15 minutes and keeps `schedule.json` up to date. If the page's HTML structure changes in a way that breaks parsing, the agent calls Claude to automatically rewrite the scraper — no manual intervention needed.
+A self-healing web scraper that polls the [Winterclash 2026 schedule page](https://www.winterclash.com/schedule-2026/) every 15 minutes and keeps `schedule.json` up to date. When the page's HTML structure changes and breaks parsing, the agent calls Google Gemini to automatically rewrite the scraper — no manual intervention needed.
 
 ## Features
 
 - Polls every 15 minutes and writes `schedule.json` only when the schedule actually changes
 - Detects HTML structural changes via a tag+class fingerprint (ignores normal content updates)
-- Self-heals: when parsing breaks, sends the new HTML to Claude, which rewrites `scraper.py`
+- Self-heals: when parsing breaks, sends the new HTML to Gemini, which rewrites `scraper.py`
 - Validates the healed scraper against the live page before saving it
 - Graceful shutdown on `Ctrl+C`
 
 ## Project structure
 
 ```
-wc26-by-claude/
+wc26-schedule-agent/
 ├── schedule_agent.py   # Main agent — poll loop, fingerprinting, self-healing
-├── scraper.py          # HTML parser (auto-replaced by Claude when it breaks)
+├── scraper.py          # HTML parser (auto-replaced by Gemini when it breaks)
 ├── schedule.json       # Output — updated only when the schedule changes
 ├── requirements.txt    # Python dependencies
 └── .agent_state.json   # Auto-created — stores fingerprint & last-run timestamp
@@ -31,12 +31,6 @@ wc26-by-claude/
 **1. Install dependencies**
 
 ```bash
-pip install -r requirements.txt
-```
-
-Or with a virtual environment:
-
-```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -48,16 +42,16 @@ pip install -r requirements.txt
 export GEMINI_API_KEY=AIza...
 ```
 
-Add it to your shell profile (`~/.zshrc`, `~/.bashrc`) to persist it across sessions. The agent runs without this key, but self-healing will be disabled.
+Add it to your shell profile (`~/.zshrc`, `~/.bashrc`) to persist across sessions. The agent runs without this key, but self-healing will be disabled.
 
 **3. Run the agent**
 
 ```bash
-# If using the venv created above:
+# Foreground
 .venv/bin/python3 schedule_agent.py
 
-# Or with the venv activated:
-python schedule_agent.py
+# Single tick (useful for testing)
+.venv/bin/python3 -c "import schedule_agent; schedule_agent.tick()"
 ```
 
 The agent runs in the foreground and logs every action with a UTC timestamp. Press `Ctrl+C` to stop.
@@ -76,7 +70,7 @@ The agent runs in the foreground and logs every action with a UTC timestamp. Pre
       "events": [
         { "time": "05:00 p.m.", "event": "Doors open" },
         { "time": "05:00 p.m.", "event": "Open Session" },
-        { "time": "07:00 p.m.", "event": "Panel: Beyond Tricks: How Skate Lessons Build Strong Minds and Strong Communities." }
+        { "time": "07:00 p.m.", "event": "Panel: Beyond Tricks..." }
       ]
     }
   ]
@@ -113,8 +107,6 @@ The fingerprint hashes only the structural skeleton of the page (tag names and C
 
 ## Running in the background
 
-**Using nohup (simplest):**
-
 ```bash
 nohup .venv/bin/python3 schedule_agent.py > agent.log 2>&1 &
 echo $! > agent.pid       # save the PID to stop it later
@@ -122,58 +114,10 @@ tail -f agent.log         # watch the log
 kill $(cat agent.pid)     # stop the agent
 ```
 
-**Using a macOS LaunchAgent (runs on login, restarts on crash):**
-
-Create `~/Library/LaunchAgents/com.wc26.schedule-agent.plist`:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key>
-  <string>com.wc26.schedule-agent</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>/Users/nazroll/Projects/wc26-by-claude/.venv/bin/python3</string>
-    <string>/Users/nazroll/Projects/wc26-by-claude/schedule_agent.py</string>
-  </array>
-  <key>EnvironmentVariables</key>
-  <dict>
-    <key>ANTHROPIC_API_KEY</key>
-    <string>sk-ant-...</string>
-  </dict>
-  <key>StandardOutPath</key>
-  <string>/Users/nazroll/Projects/wc26-by-claude/agent.log</string>
-  <key>StandardErrorPath</key>
-  <string>/Users/nazroll/Projects/wc26-by-claude/agent.log</string>
-  <key>RunAtLoad</key>
-  <true/>
-  <key>KeepAlive</key>
-  <true/>
-</dict>
-</plist>
-```
-
-Then load it:
-
-```bash
-launchctl load ~/Library/LaunchAgents/com.wc26.schedule-agent.plist
-```
-
-To stop:
-
-```bash
-launchctl unload ~/Library/LaunchAgents/com.wc26.schedule-agent.plist
-```
-
 ## Troubleshooting
 
-**"No schedule data parsed"** — The page structure may have changed significantly. If `ANTHROPIC_API_KEY` is set, the agent will attempt to self-heal automatically on the next tick. Check `agent.log` for details.
+**"No schedule data parsed"** — The page structure may have changed significantly. If `GEMINI_API_KEY` is set, the agent will attempt to self-heal automatically on the next tick. Check `agent.log` for details.
 
-**"ANTHROPIC_API_KEY not set — self-healing disabled"** — Set the env var as shown in Setup. The agent will still poll and update `schedule.json` as long as the current `scraper.py` works.
+**"GEMINI_API_KEY not set — self-healing disabled"** — Set the env var as shown in Setup. The agent will still poll and update `schedule.json` as long as the current `scraper.py` works.
 
-**"Healed scraper returned empty result — discarding"** — The Claude-generated scraper also failed to parse the page. The page may be temporarily down or its structure has changed drastically. The existing `scraper.py` and `schedule.json` are left untouched.
-
-**The agent stops unexpectedly** — Use the LaunchAgent setup above to keep it running automatically.
+**"Healed scraper returned empty result — discarding"** — The Gemini-generated scraper also failed to parse the page. The page may be temporarily down or its structure has changed drastically. The existing `scraper.py` and `schedule.json` are left untouched.
