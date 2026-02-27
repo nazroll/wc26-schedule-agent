@@ -1,6 +1,6 @@
-# AGENTS.md
+# Winterclash 2026 Schedule Agent
 
-This file provides guidance to AI Agents (e.g., Gemini CLI, Claude Code) when working with code in this repository.
+This file provides guidance to AI coding agents (Claude Code, Gemini CLI, Copilot, etc.) working in this repository.
 
 ## Project
 
